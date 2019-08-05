@@ -2,3 +2,4 @@ bin/
 lib/
 include/
 .env
+output.csv
