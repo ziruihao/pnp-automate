@@ -1,10 +1,10 @@
 from urllib.request import urlopen
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 import csv
 import time
 import random
 
-# baseUrl="https://www.usbanklocations.com"
+baseUrl="https://www.usbanklocations.com"
 
 # with open('stageOne.csv', mode="w") as outputFile:
 #     header = ["Bank Name", "Headquarters", "Asset Size", "Income", "Link"]
@@ -41,26 +41,32 @@ def randTime():
 #     with open('stageOne.csv') as inputFile:
 #         reader = csv.reader(inputFile, delimiter=",", quotechar='"')
 #         countBeforeWeGetBlocked = 0
+#         shouldStart = False
 #         for row in reader:
-#             print("ANOTHER SCRAPE")
-#             time.sleep(1 + randTime())
-#             bankName = row[0]
-#             tempUrl = row[4]
-#             print("\t" + tempUrl)
-#             with urlopen(tempUrl) as content:
-#                 soup = BeautifulSoup(content, "html.parser")
-#                 # print("\t" + str(len(soup.select(".panelhead table tr td a"))))
-#                 howManyWithTheSameName = 1
-#                 for candidate in soup.select(".panelhead table tr td a"):
-#                     # print(candidate['href'])
-#                     if ("More Information..." in str(candidate.text)):
-#                         link = baseUrl + candidate['href']
-#                         if (howManyWithTheSameName is 1):
-#                             writer.writerow([bankName, "", "", "", link])
-#                         else:
-#                             writer.writerow([bankName + " " + str(howManyWithTheSameName), "", "", "", link])
-#                         howManyWithTheSameName = howManyWithTheSameName + 1
-#                 countBeforeWeGetBlocked = countBeforeWeGetBlocked + 1
+#             if ("irst Northern Bank of Wyomin" in row[0]):
+#                 shouldStart = True
+#             if (shouldStart):
+#                 print(str(countBeforeWeGetBlocked) + " SCRAPE")
+#                 time.sleep(0.4 + randTime())
+#                 bankName = row[0]
+#                 tempUrl = row[4]
+#                 print("\t" + tempUrl)
+#                 with urlopen(tempUrl) as content:
+#                     soup = BeautifulSoup(content, "html.parser")
+#                     # print("\t" + str(len(soup.select(".panelhead table tr td a"))))
+#                     howManyWithTheSameName = 1
+#                     for candidate in soup.select(".panelhead table tr td a"):
+#                         # print(candidate['href'])
+#                         if ("More Information..." in str(candidate.text)):
+#                             link = baseUrl + candidate['href']
+#                             if (howManyWithTheSameName is 1):
+#                                 writer.writerow([bankName, "", "", "", link])
+#                             else:
+#                                 writer.writerow([bankName + " " + str(howManyWithTheSameName), "", "", "", link])
+#                             howManyWithTheSameName = howManyWithTheSameName + 1
+#                     countBeforeWeGetBlocked = countBeforeWeGetBlocked + 1
+#             else:
+#                 print("DON'T SCRAPE")
 
 def scrapSingleBank(bankName, usbankUrl):
     with urlopen(usbankUrl) as content:
@@ -71,28 +77,29 @@ def scrapSingleBank(bankName, usbankUrl):
         zip = soup.select_one('span[property="v:postal-code"]').text
 
         address = streetAddress + ', ' + town + ', ' + state + ' ' + zip
-        print(address)
 
         website = ''
         possibleWebsites = soup.select('b')
         for candidate in possibleWebsites:
             if ("ebsite" in candidate.text):
-                website = candidate.parent.next_sibling.contents[0].text
-                print(website)
+                if (type (candidate.parent.next_sibling.contents[0]) is Tag):
+                    website = candidate.parent.next_sibling.contents[0].text
+                elif (type (candidate.parent.next_sibling.contents[0]) is NavigableString):
+                    website = candidate.parent.next_sibling.contents[0]
+                else:
+                    website = "No website" + str(type (candidate.parent.next_sibling.contents[0]))
 
         assetSize = ''
         possibleAssetSizes = soup.select('b')
         for candidate in possibleAssetSizes:
             if ("otal Assets" in candidate.text):
                 assetSize = candidate.parent.next_sibling.contents[0].text
-                print(assetSize)
         
         income = ''
         possibleIncomes = soup.select('b')
         for candidate in possibleIncomes:
             if ("et Income" in candidate.text and "uarterly" not in candidate.text):
                 income = candidate.parent.next_sibling.contents[0].text
-                print(income)        
     return [bankName, address, assetSize, income, usbankUrl, website]
 
 
@@ -103,11 +110,14 @@ with open('stageThree.csv', mode="w") as outputFile:
     with open('stageTwo.csv', mode="r") as inputFile:
         reader = csv.reader(inputFile, delimiter=",", quotechar='"')
         isFirstRow = True
+        count = 0
         for row in reader:
-            if (not isFirstRow):
-                print(row[0])
-                print(row[4])
-                time.sleep(1 + randTime())
+            count = count + 1
+            if (not isFirstRow and count > 485 and count < 2222):
+                print(str(count) + " " + row[0])
+                time.sleep(0.4 + randTime())
                 writer.writerow(scrapSingleBank(row[0], row[4]))
+            else:
+                print("skip" + row[0])
             isFirstRow = False
 
